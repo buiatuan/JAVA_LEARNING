@@ -1,0 +1,111 @@
+import javax.telephony.*;
+import javax.telephony.events.*;
+
+public class IVRProgram implements ProviderObserver, AddressObserver, CallObserver {
+
+    private Provider provider;
+    private Address address;
+    private Call call;
+
+    public static void main(String[] args) {
+        IVRProgram ivr = new IVRProgram();
+        ivr.run();
+    }
+
+    public void run() {
+        try {
+            // Lấy danh sách provider khả dụng
+            Provider[] providers = JavaxTelephony.getProviders(null);
+            // Lấy provider đầu tiên trong danh sách
+            provider = providers[0];
+            // Đăng ký quan sát provider
+            provider.addProviderObserver(this);
+            // Mở kết nối đến provider
+            provider.open();
+            // Đợi cho provider được khởi tạo
+            synchronized(this) {
+                wait();
+            }
+            // Lấy danh sách địa chỉ khả dụng
+            Address[] addresses = provider.getAddresses();
+            // Lấy địa chỉ đầu tiên trong danh sách
+            address = addresses[0];
+            // Đăng ký quan sát địa chỉ
+            address.addAddressObserver(this);
+            // Mở địa chỉ
+            address.open();
+            // Đợi cho địa chỉ được khởi tạo
+            synchronized(this) {
+                wait();
+            }
+            // Tạo cuộc gọi đến địa chỉ
+            call = address.getProvider().createCall();
+            // Đăng ký quan sát cuộc gọi
+            call.addCallObserver(this);
+            // Gọi đến số điện thoại cần đến
+            call.connect("số điện thoại cần đến");
+            // Đợi cho cuộc gọi được kết nối
+            synchronized(this) {
+                wait();
+            }
+            // Phát thông báo
+            call.getTerminalConnection().play("Thông báo chào mừng đến với IVR");
+            // Lặp lại cho đến khi người dùng thoát
+            while (true) {
+                // Lắng nghe và phân tích phản hồi của người dùng
+                String response = listen();
+                // Kiểm tra phản hồi và định hướng cuộc gọi tới các tùy chọn phù hợp
+                if (response.equals("1")) {
+                    // Tùy chọn 1
+                } else if (response.equals("2")) {
+                    // Tùy chọn 2
+                } else if (response.equals("3")) {
+                    // Tùy chọn 3
+                } else if (response.equals("4")) {
+                    // Tùy chọn 4
+                } else {
+                    // Phản hồi không hợp lệ
+                    call.getTerminalConnection().play("Phản hồi không hợp lệ. Vui lòng thử lại.");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String listen() throws Exception {
+        // Lắng nghe và ghi âm phản hồi của người dùng
+        call.getTerminalConnection().record();
+        // Đợi cho việc ghi âm hoàn thành
+        synchronized(this) {
+            wait();
+        }
+        // Trả về phản hồi của người dùng
+        return call.getUserData().toString();
+    }
+
+    // Các phương thức quan sát cho Provider, Address và Call
+    // ...
+
+    @Override
+    public void addressEvent(AddressEvent event) {
+        // Xử lý sự kiện địa chỉ
+        // ...
+    }
+
+    @Override
+    public void callEvent(CallEvent event) {
+        // Xử lý sự kiện cuộc gọi
+        // ...
+    }
+
+    @Override
+    public void providerEvent(ProviderEvent event) {
+        // Xử lý sự kiện provider
+        if (event.getID() == ProviderEvent.PROVIDER_EVENT_PROVIDER_IN_SERVICE) {
+            synchronized(this) {
+                notify();
+            }
+        }
+    }
+}
